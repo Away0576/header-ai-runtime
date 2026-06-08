@@ -1,5 +1,6 @@
 #include "MetaConfig.h"
 #include "Normalizer.h"
+#include "ReconstructionError.h"
 #include "SlidingWindow.h"
 
 #include <cmath>
@@ -57,6 +58,16 @@ void expectInvalid(const std::string& json, const std::string& label)
         return;
     }
     throw std::runtime_error("Expected invalid meta.json for " + label);
+}
+
+void expectRuntimeError(void (*operation)(), const std::string& label)
+{
+    try {
+        operation();
+    } catch (const std::exception&) {
+        return;
+    }
+    throw std::runtime_error("Expected runtime error for " + label);
 }
 
 std::string replaceFirst(std::string value, const std::string& from, const std::string& to)
@@ -123,6 +134,18 @@ void testNormalizer()
     require((normalized == std::vector<double>{1.0, 1.0, -1.0, -1.0}), "time_major standard scaling");
 }
 
+void testReconstructionError()
+{
+    const auto mse = header_ai::calculateMeanSquaredError({1.0, 2.0, 3.0}, {1.0, 4.0, 5.0});
+    require(nearlyEqual(mse, 8.0 / 3.0), "MSE calculation");
+    require(!header_ai::isAnomaly(0.5, 0.5), "threshold uses strict greater-than");
+    require(header_ai::isAnomaly(0.5001, 0.5), "score above threshold is anomaly");
+
+    expectRuntimeError([]() { (void)header_ai::calculateMeanSquaredError({}, {}); }, "empty MSE input");
+    expectRuntimeError([]() { (void)header_ai::calculateMeanSquaredError({1.0}, {1.0, 2.0}); }, "MSE size mismatch");
+    expectRuntimeError([]() { (void)header_ai::isAnomaly(0.1, -1.0); }, "negative threshold");
+}
+
 }  // namespace
 
 int main()
@@ -131,6 +154,7 @@ int main()
         testMetaConfig();
         testSlidingWindow();
         testNormalizer();
+        testReconstructionError();
         std::cout << "runtime_core_tests passed\n";
         return 0;
     } catch (const std::exception& error) {
