@@ -69,7 +69,7 @@ runtime 不应依赖：
 
 ## 当前实现状态
 
-当前工程已完成 `v0.1.0` 到 `v0.4.0` 的基础 runtime 能力：
+当前工程已完成 `v0.1.0` 到 `v0.5.0` 的基础 runtime 能力：
 
 1. CMake C++ 工程骨架。
 2. `header_ai_detector` 可执行程序。
@@ -78,8 +78,19 @@ runtime 不应依赖：
 5. `time_major` 展平。
 6. StandardScaler 归一化。
 7. CTest 自测。
+8. ONNX Runtime C++ 模型加载和单次推理探测。
 
-当前阶段暂不包含 ONNX Runtime 推理，`model.onnx` 加载从 `v0.5.0` 开始实现。
+ONNX Runtime SDK 默认放置路径：
+
+```text
+third_party/onnxruntime-linux-x64-1.18.1
+```
+
+也可以通过 CMake 参数指定：
+
+```bash
+cmake -S . -B build -DONNXRUNTIME_ROOT=/path/to/onnxruntime-linux-x64-1.18.1
+```
 
 ## Ubuntu/WSL 构建与验收
 
@@ -99,6 +110,12 @@ ctest --test-dir build --output-on-failure
 
 ```bash
 ./build/header_ai_detector --meta /path/to/meta.json
+```
+
+加载 `model.onnx` 并执行一次零输入推理探测：
+
+```bash
+./build/header_ai_detector --model /path/to/model.onnx --meta /path/to/meta.json --probe-onnx
 ```
 
 ## 版本推进顺序
