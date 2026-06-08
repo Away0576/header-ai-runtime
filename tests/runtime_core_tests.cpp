@@ -1,10 +1,12 @@
 #include "AnomalyDetector.h"
+#include "FileDataSource.h"
 #include "MetaConfig.h"
 #include "Normalizer.h"
 #include "ReconstructionError.h"
 #include "SlidingWindow.h"
 
 #include <cmath>
+#include <fstream>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -147,6 +149,56 @@ void testReconstructionError()
     expectRuntimeError([]() { (void)header_ai::isAnomaly(0.1, -1.0); }, "negative threshold");
 }
 
+
+void testFileDataSource()
+{
+    const std::string single_path = "/tmp/header_ai_runtime_single.csv";
+    {
+        std::ofstream output(single_path);
+        output << "timestamp,value\n";
+        output << "100,1.5\n";
+        output << "101,2.5\n";
+    }
+
+    header_ai::FileDataSource single_source(single_path, 1);
+    std::vector<double> sample;
+    require(single_source.readSample(sample), "single-variable first sample");
+    require((sample == std::vector<double>{1.5}), "single-variable uses last numeric column");
+    require(single_source.readSample(sample), "single-variable second sample");
+    require((sample == std::vector<double>{2.5}), "single-variable second value");
+    require(!single_source.readSample(sample), "single-variable EOF");
+
+    const std::string multi_path = "/tmp/header_ai_runtime_multi.txt";
+    {
+        std::ofstream output(multi_path);
+        output << "1 2 3\n";
+        output << "4 5 6\n";
+    }
+
+    header_ai::FileDataSource multi_source(multi_path, 2);
+    require(multi_source.readSample(sample), "multi-variable first sample");
+    require((sample == std::vector<double>{2.0, 3.0}), "multi-variable takes last feature_dim values");
+    require(multi_source.readSample(sample), "multi-variable second sample");
+    require((sample == std::vector<double>{5.0, 6.0}), "multi-variable second value");
+
+    const std::string invalid_path = "/tmp/header_ai_runtime_invalid.csv";
+    {
+        std::ofstream output(invalid_path);
+        output << "value\n";
+        output << "1.0\n";
+        output << "bad\n";
+    }
+
+    header_ai::FileDataSource invalid_source(invalid_path, 1);
+    require(invalid_source.readSample(sample), "invalid source first numeric sample");
+    bool failed = false;
+    try {
+        (void)invalid_source.readSample(sample);
+    } catch (const std::exception&) {
+        failed = true;
+    }
+    require(failed, "invalid numeric value after header fails");
+}
 void testAnomalyDetector()
 {
     header_ai::AnomalyDetector detector(3, 5);
@@ -177,6 +229,7 @@ int main()
         testSlidingWindow();
         testNormalizer();
         testReconstructionError();
+        testFileDataSource();
         testAnomalyDetector();
         std::cout << "runtime_core_tests passed\n";
         return 0;

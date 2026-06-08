@@ -584,3 +584,160 @@ feature/v0.7-alarm-state-machine
 4. 连续正常达到 `clear_count` 后恢复 `NORMAL`。
 5. ONNX 探测输出当前状态 `state`。
 6. 单元测试覆盖报警进入、报警保持、报警恢复和非法配置。
+
+## 11. v0.8-v0.10 开发记录
+
+功能分支：
+
+```text
+feature/v0.8-v0.10-file-replay
+```
+
+目标：一次性推进到第一阶段最小可行版本 `v0.10.0`，形成 Linux C++ 单变量离线回放和实时推理可跑通版。
+
+### 11.1 v0.8 文件回放
+
+新增文件数据源能力：
+
+```text
+include/IDataSource.h
+include/FileDataSource.h
+src/FileDataSource.cpp
+```
+
+`FileDataSource` 支持：
+
+1. CSV 输入。
+2. 空白分隔 TXT 输入。
+3. 首行 header 自动跳过。
+4. 空行和 `#` 注释行跳过。
+5. `timestamp,value` 形式输入，取最后 `feature_dim` 个数值作为特征。
+6. 单变量和多变量预留。
+7. 数据行出现非数值时明确报错。
+
+### 11.2 v0.9 输入接口抽象
+
+新增 `IDataSource` 接口：
+
+```cpp
+class IDataSource {
+public:
+    virtual ~IDataSource() = default;
+    virtual bool readSample(std::vector<double>& sample) = 0;
+};
+```
+
+主流程依赖 `IDataSource` 抽象读取样本，后续可扩展：
+
+1. `SerialDataSource`。
+2. `SocketDataSource`。
+3. CAN/GPIO 等现场输入。
+
+当前实现的具体数据源为：
+
+```text
+FileDataSource
+```
+
+### 11.3 v0.10 单变量完整链路
+
+`header_ai_detector` 新增完整回放命令：
+
+```bash
+./build/header_ai_detector --model /path/to/model.onnx --meta /path/to/meta.json --replay /path/to/samples.csv
+```
+
+完整链路：
+
+```text
+FileDataSource
+  -> SlidingWindow
+  -> Normalizer
+  -> OnnxAutoEncoder
+  -> calculateMeanSquaredError
+  -> isAnomaly
+  -> AnomalyDetector
+  -> stdout CSV result
+```
+
+输出字段：
+
+```text
+window_index,end_sample_index,mse,threshold,is_anomaly,state
+```
+
+末尾输出汇总：
+
+```text
+total_samples=<N>
+total_windows=<M>
+```
+
+### 11.4 v0.8-v0.10 验收
+
+构建与单元测试：
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+cd build && ctest --output-on-failure
+```
+
+结果：
+
+```text
+100% tests passed
+```
+
+真实模型探测：
+
+```bash
+./build/header_ai_detector \
+  --model /mnt/c/Users/SESA855007/Downloads/data/data/model.onnx \
+  --meta /mnt/c/Users/SESA855007/Downloads/data/data/meta.json \
+  --probe-onnx
+```
+
+临时生成 80 行单变量 CSV：
+
+```text
+timestamp,value
+0,43.097919775672935
+1,43.097919775672935
+...
+```
+
+完整回放验收：
+
+```bash
+./build/header_ai_detector \
+  --model /mnt/c/Users/SESA855007/Downloads/data/data/model.onnx \
+  --meta /mnt/c/Users/SESA855007/Downloads/data/data/meta.json \
+  --replay /tmp/header_ai_runtime_replay.csv
+```
+
+结果：
+
+```text
+window_index,end_sample_index,mse,threshold,is_anomaly,state
+0,59,0.00780020916862,0.00979787297547,false,NORMAL
+...
+20,79,0.00780020916862,0.00979787297547,false,NORMAL
+total_samples=80
+total_windows=21
+```
+
+说明：`window_size=60`，输入 80 个样本，因此产生 `80 - 60 + 1 = 21` 个窗口，符合预期。
+
+### 11.5 当前部署形态
+
+当前最小运行依赖：
+
+```text
+header_ai_detector
+model.onnx
+meta.json
+libonnxruntime.so
+```
+
+当前阶段仍使用动态链接 ONNX Runtime。后续部署到目标 Linux 设备时，需要根据目标架构准备对应的 `libonnxruntime.so`。
