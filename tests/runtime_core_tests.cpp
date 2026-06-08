@@ -1,3 +1,4 @@
+#include "AnomalyDetector.h"
 #include "MetaConfig.h"
 #include "Normalizer.h"
 #include "ReconstructionError.h"
@@ -146,6 +147,27 @@ void testReconstructionError()
     expectRuntimeError([]() { (void)header_ai::isAnomaly(0.1, -1.0); }, "negative threshold");
 }
 
+void testAnomalyDetector()
+{
+    header_ai::AnomalyDetector detector(3, 5);
+    require(detector.state() == header_ai::AlarmState::Normal, "initial state is normal");
+    require(detector.update(true) == header_ai::AlarmState::Normal, "first anomaly stays normal");
+    require(detector.update(true) == header_ai::AlarmState::Normal, "second anomaly stays normal");
+    require(detector.update(true) == header_ai::AlarmState::Alarm, "third anomaly enters alarm");
+    require(detector.anomalyCount() == 3, "anomaly count tracked");
+
+    for (int i = 0; i < 4; ++i) {
+        require(detector.update(false) == header_ai::AlarmState::Alarm, "alarm holds until clear_count normal samples");
+    }
+    require(detector.update(false) == header_ai::AlarmState::Normal, "fifth normal clears alarm");
+    require(detector.normalCount() == 5, "normal count tracked");
+    require(header_ai::toString(header_ai::AlarmState::Normal) == "NORMAL", "normal string");
+    require(header_ai::toString(header_ai::AlarmState::Alarm) == "ALARM", "alarm string");
+
+    expectRuntimeError([]() { header_ai::AnomalyDetector invalid(0, 5); }, "zero consecutive_count");
+    expectRuntimeError([]() { header_ai::AnomalyDetector invalid(3, 0); }, "zero clear_count");
+}
+
 }  // namespace
 
 int main()
@@ -155,6 +177,7 @@ int main()
         testSlidingWindow();
         testNormalizer();
         testReconstructionError();
+        testAnomalyDetector();
         std::cout << "runtime_core_tests passed\n";
         return 0;
     } catch (const std::exception& error) {
