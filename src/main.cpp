@@ -1,4 +1,5 @@
 #include "MetaConfig.h"
+#include "ReconstructionError.h"
 
 #ifdef HEADER_AI_ENABLE_ONNX
 #include "OnnxAutoEncoder.h"
@@ -13,7 +14,7 @@ namespace {
 
 void printUsage()
 {
-    std::cout << "header_ai_detector v0.5.0\n"
+    std::cout << "header_ai_detector v0.6.0\n"
               << "Usage:\n"
               << "  header_ai_detector --version\n"
               << "  header_ai_detector --meta <meta.json>\n"
@@ -46,11 +47,17 @@ int main(int argc, char* argv[])
 #ifdef HEADER_AI_ENABLE_ONNX
             const auto config = header_ai::loadMetaConfigFromFile(argv[4]);
             header_ai::OnnxAutoEncoder model(argv[2], config);
-            const std::vector<double> zero_input(config.input_dim, 0.0);
-            const auto reconstruction = model.reconstruct(zero_input);
+            const std::vector<double> normalized_input(config.input_dim, 0.0);
+            const auto reconstruction = model.reconstruct(normalized_input);
+            const double mse = header_ai::calculateMeanSquaredError(normalized_input, reconstruction);
+            const bool anomaly = header_ai::isAnomaly(mse, config.threshold);
+
             std::cout << "ONNX probe completed\n"
                       << "input_dim=" << config.input_dim << "\n"
-                      << "output_dim=" << reconstruction.size() << "\n";
+                      << "output_dim=" << reconstruction.size() << "\n"
+                      << "mse=" << mse << "\n"
+                      << "threshold=" << config.threshold << "\n"
+                      << "is_anomaly=" << (anomaly ? "true" : "false") << "\n";
             return reconstruction.size() == config.input_dim ? 0 : 1;
 #else
             std::cerr << "ONNX Runtime support is not enabled in this build\n";
