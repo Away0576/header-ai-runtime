@@ -67,6 +67,40 @@ runtime 不应依赖：
   -> 连续异常报警
 ```
 
+## 当前实现状态
+
+当前工程已完成 `v0.1.0` 到 `v0.4.0` 的基础 runtime 能力：
+
+1. CMake C++ 工程骨架。
+2. `header_ai_detector` 可执行程序。
+3. `meta.json` 读取与合同校验。
+4. 单变量/多变量预留的 `SlidingWindow`。
+5. `time_major` 展平。
+6. StandardScaler 归一化。
+7. CTest 自测。
+
+当前阶段暂不包含 ONNX Runtime 推理，`model.onnx` 加载从 `v0.5.0` 开始实现。
+
+## Ubuntu/WSL 构建与验收
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+ctest --test-dir build --output-on-failure
+```
+
+查看程序版本：
+
+```bash
+./build/header_ai_detector --version
+```
+
+加载训练工程生成的 `meta.json`：
+
+```bash
+./build/header_ai_detector --meta /path/to/meta.json
+```
+
 ## 版本推进顺序
 
 详细版本拆分见：
