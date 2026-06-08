@@ -69,7 +69,7 @@ runtime 不应依赖：
 
 ## 当前实现状态
 
-当前工程已完成 `v0.1.0` 到 `v0.7.0` 的基础 runtime 能力：
+当前工程已完成 `v0.1.0` 到 `v0.10.0` 的 Linux C++ 单变量离线回放和实时推理可跑通版：
 
 1. CMake C++ 工程骨架。
 2. `header_ai_detector` 可执行程序。
@@ -81,6 +81,9 @@ runtime 不应依赖：
 8. ONNX Runtime C++ 模型加载和单次推理探测。
 9. MSE 重构误差计算和阈值异常判断。
 10. 连续异常报警状态机。
+11. `IDataSource` 输入接口和 `FileDataSource` 文件数据源。
+12. CSV/TXT 文件回放模拟实时输入。
+13. 滑窗、归一化、ONNX 推理、MSE、阈值、报警状态的完整链路。
 
 ONNX Runtime SDK 默认放置路径：
 
@@ -118,6 +121,40 @@ ctest --test-dir build --output-on-failure
 
 ```bash
 ./build/header_ai_detector --model /path/to/model.onnx --meta /path/to/meta.json --probe-onnx
+```
+
+使用 CSV/TXT 文件模拟实时输入并运行完整检测链路：
+
+```bash
+./build/header_ai_detector --model /path/to/model.onnx --meta /path/to/meta.json --replay /path/to/samples.csv
+```
+
+回放输入格式：
+
+1. 支持 CSV 或空白分隔 TXT。
+2. 支持首行 header。
+3. 支持单列特征值，例如 `43.1`。
+4. 支持 `timestamp,value`，程序会取最后 `feature_dim` 个数值作为特征。
+5. 当前 `v0.10.0` 主要验收单变量 `feature_dim=1`。
+
+回放输出格式：
+
+```text
+window_index,end_sample_index,mse,threshold,is_anomaly,state
+0,59,0.00780020916862,0.00979787297547,false,NORMAL
+...
+total_samples=80
+total_windows=21
+```
+
+最小部署包建议：
+
+```text
+deploy/
+├── header_ai_detector
+├── model.onnx
+├── meta.json
+└── libonnxruntime.so
 ```
 
 ## 版本推进顺序
