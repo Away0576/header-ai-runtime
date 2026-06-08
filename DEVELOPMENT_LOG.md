@@ -529,3 +529,58 @@ working tree: clean
 1. 合并 v0.5 PR 到 `main`。
 2. 回到 `main` 并对齐远程。
 3. 新建 v0.6 分支，实现 MSE 重构误差和阈值判断。
+
+## 9. v0.6 开发补充记录
+
+功能分支：
+
+```text
+feature/v0.6-error-threshold
+```
+
+提交：
+
+```text
+1798e3a Implement reconstruction error threshold v0.6
+```
+
+实现内容：
+
+1. 新增 `ReconstructionError` 模块。
+2. 实现 `calculateMeanSquaredError(expected, actual)`。
+3. 实现 `isAnomaly(mse, threshold)`。
+4. 阈值判断采用严格大于：`mse > threshold`。
+5. ONNX 探测输出新增 `mse`、`threshold` 和 `is_anomaly`。
+6. 单元测试覆盖 MSE、长度不匹配、空输入和负阈值。
+
+真实训练产物验收结果：
+
+```text
+ONNX probe completed
+input_dim=60
+output_dim=60
+mse=0.00780021
+threshold=0.00979787
+is_anomaly=false
+```
+
+v0.6 PR 已合并到 `main`。
+
+## 10. v0.7 开发记录
+
+功能分支：
+
+```text
+feature/v0.7-alarm-state-machine
+```
+
+目标：实现连续异常报警状态机，避免单次尖峰造成误报。
+
+计划实现内容：
+
+1. 新增 `AnomalyDetector` 类。
+2. 读取 `meta.json` 中的 `alarm.consecutive_count` 和 `alarm.clear_count`。
+3. 连续异常达到 `consecutive_count` 后进入 `ALARM`。
+4. 连续正常达到 `clear_count` 后恢复 `NORMAL`。
+5. ONNX 探测输出当前状态 `state`。
+6. 单元测试覆盖报警进入、报警保持、报警恢复和非法配置。

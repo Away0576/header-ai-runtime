@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(header_ai_runtime VERSION 0.6.0 LANGUAGES CXX)
+project(header_ai_runtime VERSION 0.7.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -15,6 +15,7 @@ if(EXISTS "${ONNXRUNTIME_ROOT}/include/onnxruntime_cxx_api.h" AND EXISTS "${ONNX
 endif()
 
 add_library(header_ai_runtime_core
+    src/AnomalyDetector.cpp
     src/MetaConfig.cpp
     src/Normalizer.cpp
     src/ReconstructionError.cpp

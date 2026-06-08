@@ -69,7 +69,7 @@ runtime 不应依赖：
 
 ## 当前实现状态
 
-当前工程已完成 `v0.1.0` 到 `v0.6.0` 的基础 runtime 能力：
+当前工程已完成 `v0.1.0` 到 `v0.7.0` 的基础 runtime 能力：
 
 1. CMake C++ 工程骨架。
 2. `header_ai_detector` 可执行程序。
@@ -80,6 +80,7 @@ runtime 不应依赖：
 7. CTest 自测。
 8. ONNX Runtime C++ 模型加载和单次推理探测。
 9. MSE 重构误差计算和阈值异常判断。
+10. 连续异常报警状态机。
 
 ONNX Runtime SDK 默认放置路径：
 
@@ -113,7 +114,7 @@ ctest --test-dir build --output-on-failure
 ./build/header_ai_detector --meta /path/to/meta.json
 ```
 
-加载 `model.onnx` 并执行一次零输入推理探测，输出 `mse`、`threshold` 和 `is_anomaly`：
+加载 `model.onnx` 并执行一次零输入推理探测，输出 `mse`、`threshold`、`is_anomaly` 和 `state`：
 
 ```bash
 ./build/header_ai_detector --model /path/to/model.onnx --meta /path/to/meta.json --probe-onnx

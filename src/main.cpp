@@ -1,3 +1,4 @@
+#include "AnomalyDetector.h"
 #include "MetaConfig.h"
 #include "ReconstructionError.h"
 
@@ -14,7 +15,7 @@ namespace {
 
 void printUsage()
 {
-    std::cout << "header_ai_detector v0.6.0\n"
+    std::cout << "header_ai_detector v0.7.0\n"
               << "Usage:\n"
               << "  header_ai_detector --version\n"
               << "  header_ai_detector --meta <meta.json>\n"
@@ -39,7 +40,9 @@ int main(int argc, char* argv[])
                       << "window_size=" << config.window_size << "\n"
                       << "feature_dim=" << config.feature_dim << "\n"
                       << "input_dim=" << config.input_dim << "\n"
-                      << "threshold=" << config.threshold << "\n";
+                      << "threshold=" << config.threshold << "\n"
+                      << "consecutive_count=" << config.alarm.consecutive_count << "\n"
+                      << "clear_count=" << config.alarm.clear_count << "\n";
             return 0;
         }
 
@@ -51,13 +54,16 @@ int main(int argc, char* argv[])
             const auto reconstruction = model.reconstruct(normalized_input);
             const double mse = header_ai::calculateMeanSquaredError(normalized_input, reconstruction);
             const bool anomaly = header_ai::isAnomaly(mse, config.threshold);
+            header_ai::AnomalyDetector detector(config.alarm.consecutive_count, config.alarm.clear_count);
+            const auto state = detector.update(anomaly);
 
             std::cout << "ONNX probe completed\n"
                       << "input_dim=" << config.input_dim << "\n"
                       << "output_dim=" << reconstruction.size() << "\n"
                       << "mse=" << mse << "\n"
                       << "threshold=" << config.threshold << "\n"
-                      << "is_anomaly=" << (anomaly ? "true" : "false") << "\n";
+                      << "is_anomaly=" << (anomaly ? "true" : "false") << "\n"
+                      << "state=" << header_ai::toString(state) << "\n";
             return reconstruction.size() == config.input_dim ? 0 : 1;
 #else
             std::cerr << "ONNX Runtime support is not enabled in this build\n";
