@@ -1,5 +1,7 @@
 build/
 cmake-build-*/
+third_party/onnxruntime*/
+cmake-build-*/
 CMakeFiles/
 CMakeCache.txt
 CTestTestfile.cmake
